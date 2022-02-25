@@ -1,0 +1,4 @@
+name = "StochOptExperiment"
+uuid = "5d402d8c-c711-4456-9840-c27c89759512"
+authors = ["Gabriel Laurentino <laurentino@viseduca.com>"]
+version = "0.1.0"
