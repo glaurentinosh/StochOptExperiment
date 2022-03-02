@@ -59,7 +59,7 @@ function dynamicProgramming!(t::Int64, stock::Int64, args::Arguments, bellmanfun
         maxvalue = -Inf
         for control in minControl:stepControl:maxControl
             realization = instCost(control, stock) + bellmanfunction[dynamics(stock, control, w) + 1, t+2]
-            if maxvalue < expectedmax
+            if maxvalue < realization
                 maxvalue = realization
                 policy = control
             end

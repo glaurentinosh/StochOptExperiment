@@ -7,6 +7,14 @@ function linearLaw(minNoise::Int64, maxNoise::Int64, multiplier::Real, w)
     return minProb + deltaProb * (w - minNoise)
 end
 
+function uniformLaw(minNoise::Int64, maxNoise::Int64, multiplier::Real, w)
+    return 1/(maxNoise - minNoise + 1)
+end
+
+function quadraticLaw(minNoise::Int64, maxNoise::Int64, multiplier::Real, w)
+    return 6*(w - minNoise)*(maxNoise - w)/(maxNoise - minNoise)^3
+end
+
 function instantaneousCost(u, s, p)
     if (u <= s)
         return p*u
@@ -28,12 +36,12 @@ function main()
     maxControl = 80
     minControl = 0
     stepControl = 1
-    horizon = 8
+    horizon = 25
 
     minNoise = 0
-    maxNoise = 80
-    multiplier = 2
-    law(w) = linearLaw(minNoise, maxNoise, multiplier, w)
+    maxNoise = 120
+    multiplier = 10000
+    law(w) = quadraticLaw(minNoise, maxNoise, multiplier, w)
     noise = Noise(maxNoise, minNoise, law)
 
     p = 2
