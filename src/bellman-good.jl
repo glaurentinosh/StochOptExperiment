@@ -14,6 +14,24 @@ struct Arguments
     horizon::Int64
 end
 
+struct Noise
+    maxNoise::Int64
+    minNoise::Int64
+    law::Function
+end
+
+struct Variables
+    maxStock::Int64
+    maxControl::Int64
+    minControl::Int64
+    stepControl::Int64
+    noise::Noise
+    instantaneousCost::Function
+    finalCost::Function
+    horizon::Int64
+end
+
+
 function Arguments(args::Arguments, newMaxNoise::Int64)
     newArgs = Arguments(args.maxStock, args.maxControl, 0, 1, newMaxNoise, 0,
     args.instantaneousCostConstant, args.finalCostConstant, args.horizon,
@@ -76,15 +94,21 @@ function fillvalues!(args::Arguments, bellman_function::Array{U, 2}) where U <: 
         max_expected = -Inf # needs to be -Inf
         for u in Umin:Ustep:Umax # u = Umin, Umin+1, ..., Umax 
             expected_value = 0
-            for i in 0:Wmax # i = 0, 1, ..., Wmax
+            for i in Wmin:Wmax # i = 0, 1, ..., Wmax
                 w = Wmin + i * Winv * (Wmax - Wmin)
-                expected_value += L(u, s, w) + bellman_function[dynamics(s, u, w) + 1, t+2]
+                realization = L(u, s, w) + bellman_function[dynamics(s, u, w) + 1, t+2]
+                expected_value += realization 
             end
-            expected_value /= (Wmax + 1) # Wmax + 1 realizations
-            max_expected = max(expected_value, max_expected)
+            expected_value /= (Wmax - Wmin + 1) # Wmax + 1 realizations
+            if max_expected < expected_value
+                max_expected = expected_value #max(expected_value, max_expected)
+                policies[t+1] = u
+            end
         end
         bellman_function[s+1,t+1] = max_expected
     end
+
+    return policies
 end
 
 function fillvalues_hd!(args::Arguments, hd_bellman_function::Array{U, 2}) where U <: Real
@@ -161,6 +185,18 @@ function fillvalues_hd_2!(args::Arguments, hd_bellman_function::Array{U, 2}) whe
     end
 end
 
+function showPolicies()
+    argsTup = (100, 80, 0, 1, 10, 0, 2, 10000, 25)
+    args = Arguments(argsTup...)
+
+    dh_bellman = zeros(args.maxStock + 1, args.horizon + 1)
+
+    policies = fillvalues!(args, dh_bellman)
+    for t in 1:length(policies)
+        println("Time $(t-1) : decision $(policies[t]).")
+    end
+end
+
 function simulate(args::Arguments)
     Smax = args.maxStock
     T = args.horizon
@@ -182,8 +218,6 @@ function simulate(
     hd_bellman::Array{U, 2}, 
     hd_bellman2::Array{U, 2}
     ) where U <: Real
-    Smax = args.maxStock
-    T = args.horizon
     
     fillvalues!(args, dh_bellman)
     fillvalues_hd!(args, hd_bellman)
@@ -502,3 +536,4 @@ end
 #oldmultiple_simulations()
 #main()
 @time olddependance_noise_test(parse(Int64, ARGS[1]))
+#showPolicies()
