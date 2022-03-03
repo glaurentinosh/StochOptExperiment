@@ -1,8 +1,4 @@
-struct Noise
-    maxNoise::Int64
-    minNoise::Int64
-    law::Function
-end
+include("probability.jl")
 
 struct Arguments
     maxStock::Int64
@@ -16,15 +12,22 @@ struct Arguments
     horizon::Int64
 end
 
+function Arguments(args::Arguments, newNoise::Int64)
+    Arguments(args.maxStock, args.maxControl, 0, 1, newNoise, args.dynamics,
+    args.instantaneousCost, args.finalCost, args.horizon)
+end
+
 abstract type ProblemType end
 
 abstract type DH <: ProblemType end
 abstract type HD <: ProblemType end
 
-abstract type ValueFunctions <: AbstractArray{Real, 2} end
+const FloatInt = Union{Float64, Int64}
+
+abstract type ValueFunctions <: AbstractArray{FloatInt, 2} end
 
 struct BellmanFunctions{T<:ProblemType} <: ValueFunctions
-    data::Array{Real, 2}
+    data::Array{FloatInt, 2}
 end
 
 Base.getindex(bellman::BellmanFunctions, i::Int) = bellman.data[i]

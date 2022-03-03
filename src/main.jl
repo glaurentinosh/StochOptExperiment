@@ -1,20 +1,6 @@
 include("dynProg.jl")
 include("plotting.jl")
 
-function linearLaw(minNoise::Int64, maxNoise::Int64, multiplier::Real, w)
-    minProb = 2/((multiplier+1)*(maxNoise - minNoise + 1))
-    deltaProb = (multiplier - 1) * minProb / (maxNoise - minNoise)
-    return minProb + deltaProb * (w - minNoise)
-end
-
-function uniformLaw(minNoise::Int64, maxNoise::Int64, multiplier::Real, w)
-    return 1/(maxNoise - minNoise + 1)
-end
-
-function quadraticLaw(minNoise::Int64, maxNoise::Int64, multiplier::Real, w)
-    return 6*(w - minNoise)*(maxNoise - w)/(maxNoise - minNoise)^3
-end
-
 function instantaneousCost(u, s, p)
     if (u <= s)
         return p*u
@@ -31,18 +17,45 @@ function dynamics_aux(s, u, w, Smax)
     return round(Int, max(min(s - u + w, Smax), 0))
 end
 
+function dependance_noise!(args::Arguments, dhbellman::BellmanFunctions{DH},
+                                hdbellman::BellmanFunctions{HD}, step::Int64)
+    y1 = Real[]
+    y2 = Real[]
+    
+    Smax = args.maxStock
+    x_axis = args.noise.minNoise:step:args.noise.maxNoise
+    
+    for w in x_axis
+        println(w)
+        
+        newArgs = Arguments(args, w)
+
+        @time fillvalues!(newArgs, dhbellman)
+        @time fillvalues!(newArgs, hdbellman)
+        
+        hd_middle_value = hdbellman[round(Int, Smax/2),1]
+        dh_middle_value = dhbellman[round(Int, Smax/2),1]
+    
+        push!(y1, dh_middle_value)
+        push!(y2, hd_middle_value)
+    end
+    
+    return x_axis, y1, y2
+end
+
+
+
 function main()
     maxStock = 100
     maxControl = 80
     minControl = 0
     stepControl = 1
-    horizon = 25
+    horizon = 8
 
     minNoise = 0
-    maxNoise = 120
+    maxNoise = 80
     multiplier = 10000
-    law(w) = quadraticLaw(minNoise, maxNoise, multiplier, w)
-    noise = Noise(maxNoise, minNoise, law)
+    noise = Noise{LinearDistribution}(minNoise, maxNoise, multiplier)
 
     p = 2
     P = 10
@@ -60,6 +73,9 @@ function main()
     policies_hd = fillvalues!(args, hdbellman)
 
     plotting(args, dhbellman, hdbellman)
+    #println(policies_dh)
+    #println(policies_hd)
+    
 end
 
 main()
