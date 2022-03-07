@@ -6,24 +6,28 @@ abstract type QuadraticDistribution <: ProbabilityDistribution end
 
 abstract type RandomVariable{T<:ProbabilityDistribution} end
 
-struct Noise{T} <: RandomVariable{T}
+mutable struct Noise{T} <: RandomVariable{T}
     noiseRange::UnitRange{Int64}
     law::Function
 end
 
-function Noise{LinearDistribution}(minNoise, maxNoise, multiplier)
+function Noise(oldNoise::Noise{T}, newMaxNoise::Int64, newmultiplier = 1) where T<:ProbabilityDistribution
+    Noise{T}(first(oldNoise.noiseRange), newMaxNoise, newmultiplier)
+end
+
+function Noise{LinearDistribution}(minNoise::Int64, maxNoise::Int64, multiplier = 1)
     noiseRange = minNoise:maxNoise
     law(w::Int64) = linearLaw(w, minNoise, maxNoise, multiplier)
     Noise{LinearDistribution}(noiseRange, law)
 end
 
-function Noise{UniformDistribution}(minNoise, maxNoise)
+function Noise{UniformDistribution}(minNoise::Int64, maxNoise::Int64, multiplier = 1)
     noiseRange = minNoise:maxNoise
     law(w::Int64) = uniformLaw(minNoise, maxNoise)
     Noise{UniformDistribution}(noiseRange, law)
 end
 
-function Noise{QuadraticDistribution}(minNoise, maxNoise)
+function Noise{QuadraticDistribution}(minNoise::Int64, maxNoise::Int64, multiplier = 1)
     noiseRange = minNoise:maxNoise
     law(w::Int64) = quadraticLaw(w, minNoise, maxNoise)
     Noise{QuadraticDistribution}(noiseRange, law)

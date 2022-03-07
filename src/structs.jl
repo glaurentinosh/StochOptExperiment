@@ -1,6 +1,6 @@
 include("probability.jl")
 
-struct Arguments
+mutable struct Arguments
     maxStock::Int64
     maxControl::Int64
     minControl::Int64
@@ -12,9 +12,15 @@ struct Arguments
     horizon::Int64
 end
 
-function Arguments(args::Arguments, newNoise::Int64)
-    Arguments(args.maxStock, args.maxControl, 0, 1, newNoise, args.dynamics,
+function Arguments(args::Arguments, newmaxnoise::Int64, multiplier = 1)
+    newnoise = Noise(args.noise, newmaxnoise, multiplier)
+    Arguments(args.maxStock, args.maxControl, 0, 1, newnoise, args.dynamics,
     args.instantaneousCost, args.finalCost, args.horizon)
+end
+
+function name(args::Arguments)
+    return "$(args.maxStock)-$(args.maxControl)-$(args.maxNoise)-"*
+    "$(args.instantaneousCost(1))-$(args.finalCost(1))-$(args.horizon)"
 end
 
 abstract type ProblemType end

@@ -18,17 +18,17 @@ function dynamics_aux(s, u, w, Smax)
 end
 
 function dependance_noise!(args::Arguments, dhbellman::BellmanFunctions{DH},
-                                hdbellman::BellmanFunctions{HD}, step::Int64)
-    y1 = Real[]
-    y2 = Real[]
+    hdbellman::BellmanFunctions{HD}, step::Int64, lastMaxNoise::Int64, multiplier=1)
+    y1 = FloatInt[]
+    y2 = FloatInt[]
     
     Smax = args.maxStock
-    x_axis = args.noise.minNoise:step:args.noise.maxNoise
+    x_axis = last(args.noise.noiseRange):step:lastMaxNoise
     
     for w in x_axis
         println(w)
         
-        newArgs = Arguments(args, w)
+        newArgs = Arguments(args, w, multiplier)
 
         @time fillvalues!(newArgs, dhbellman)
         @time fillvalues!(newArgs, hdbellman)
@@ -43,7 +43,36 @@ function dependance_noise!(args::Arguments, dhbellman::BellmanFunctions{DH},
     return x_axis, y1, y2
 end
 
+function mainplot(args, dhbellman, hdbellman)
+    policies_dh = fillvalues!(args, dhbellman)
+    policies_hd = fillvalues!(args, hdbellman)
 
+    plotting(args, dhbellman, hdbellman)
+    #println(policies_dh)
+    #println(policies_hd)
+end
+
+function maindepnoise(args, dhbellman, hdbellman, multiplier)
+    step = 20
+    lastmaxnoise = 300
+    xaxis, y1, y2 = dependance_noise!(args, dhbellman, hdbellman, step, lastmaxnoise, multiplier)
+
+    yaxis = [y1, y2]
+    
+    gr()
+    
+    display( plot(
+    xaxis, yaxis, label=["case 1" "case 2"], legend = :bottomleft, legendfontsize=10,
+    line=[:auto :auto],
+    color=["blue" "red"], alpha=[0.9 0.9], xlabel="Max Noise "*L"\overline{W}"*" "*L"T="*"$(args.horizon)", xlabelfontsize=16,
+    ylabel="Relative distance", ylabelfontsize=16,
+    legendtitle="Cases", legendtitlefontsize=12,
+    linewidth=3, thickness_scaling = 1, framestyle = :origin
+    )
+    )
+    
+    savefig("img/dependencenoise-$(name(args))-$(step)-$(lastmaxnoise).png")
+end
 
 function main()
     maxStock = 100
@@ -54,8 +83,8 @@ function main()
 
     minNoise = 0
     maxNoise = 80
-    multiplier = 10000
-    noise = Noise{LinearDistribution}(minNoise, maxNoise, multiplier)
+    multiplier = 0.001
+    noise = Noise{QuadraticDistribution}(minNoise, maxNoise, multiplier)
 
     p = 2
     P = 10
@@ -69,12 +98,8 @@ function main()
     dhbellman = BellmanFunctions{DH}(args)
     hdbellman = BellmanFunctions{HD}(args)
 
-    policies_dh = fillvalues!(args, dhbellman)
-    policies_hd = fillvalues!(args, hdbellman)
-
-    plotting(args, dhbellman, hdbellman)
-    #println(policies_dh)
-    #println(policies_hd)
+    #mainplot(args, dhbellman, hdbellman)
+    maindepnoise(args, dhbellman, hdbellman, multiplier)
     
 end
 
