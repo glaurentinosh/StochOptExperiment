@@ -25,3 +25,6 @@ Manifest.toml
 
 # Folders
 img/
+
+# logs
+src/output_file_name.txt
