@@ -19,8 +19,8 @@ function Arguments(args::Arguments, newmaxnoise::Int64, multiplier = 1)
 end
 
 function name(args::Arguments)
-    return "$(args.maxStock)-$(args.maxControl)-$(args.maxNoise)-"*
-    "$(args.instantaneousCost(1))-$(args.finalCost(1))-$(args.horizon)"
+    return "$(args.maxStock)-$(args.maxControl)-$(last(args.noise.noiseRange))-"*
+    "$(args.instantaneousCost(1,1,1))-$(args.finalCost(1))-$(args.horizon)"
 end
 
 abstract type ProblemType end

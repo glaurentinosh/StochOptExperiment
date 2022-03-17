@@ -27,4 +27,4 @@ Manifest.toml
 img/
 
 # logs
-src/output_file_name.txt
+output_file_name.txt

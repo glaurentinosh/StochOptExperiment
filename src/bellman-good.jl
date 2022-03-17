@@ -81,7 +81,7 @@ function fillvalues!(args::Arguments, bellman_function::Array{U, 2}) where U <: 
     
     T = args.horizon
     K(s) = finalCost(s, args)
-    L(u,s,w) = instantaneousCost(u, s, w, args)
+    L(u,s,w) = instantaneousCost2(u, s, w, args)
     dynamics(s, u, w) = dynamics_aux(s, u, w, args)
     
     policies = zeros(T)
@@ -123,7 +123,7 @@ function fillvalues_hd!(args::Arguments, hd_bellman_function::Array{U, 2}) where
     
     T = args.horizon
     K(s) = finalCost(s, args)
-    L(u,s,w) = instantaneousCost(u, s, w, args)
+    L(u,s,w) = instantaneousCost2(u, s, w, args)
     
     dynamics(s, u, w) = dynamics_aux(s, u, w, args)
     
@@ -261,9 +261,9 @@ function oldmultiple_simulations(wmaxmultiplier = 2)
     horizon = 8
     
     #p = 10
-    #P = 5
+    P = 0
     
-    for s in sstart:50:300, u in 0.5*s:ustep:0.9*s, w in 0.2*s:ustep:4*s, p in 2:4:10, P in 5:5:25
+    for s in sstart:50:300, u in 0.5*s:ustep:0.9*s, w in 0.2*s:ustep:4*s, p in 2:4:10#, P in 5:5:25
         #w = wmaxmultiplier*s
         println("s, u, w, p, P : $(s), $(u), $(w), $(p), $(P)")
         args = Arguments(s,u,umin,ustep,w, wmin, p, P, horizon)
@@ -356,15 +356,16 @@ function plotting(
         normalize(view(hd_bellman2,:, t+1), (T-t))
         ]
         
-        display( plot(
-        x_axis, y_axis, label=["DH" "HD" "HD2"], legend = :bottomright, legendfontsize=14,
-        line=[:auto :auto :auto], linewidht=[20 4 1],
-        color=["blue" "red" "orange"], alpha=[0.9 0.9 0.9], xlabel="Stock "*L"(s)", xlabelfontsize=16,
-        ylabel="Normalized cost " * latexstring("V_{$t}(s)"), ylabelfontsize=16,
-        legendtitle=latexstring("t = {$t}"), legendtitlefontsize=16,
-        linewidth=3, thickness_scaling = 1, framestyle = :origin
-        #title="Normalized cost at time t = $t", titlefontsize=18
-        )
+        display( 
+            plot(
+                x_axis, y_axis, label=["DH" "HD" "HD2"], legend = :bottomright, legendfontsize=14,
+                line=[:auto :auto :auto], linewidht=[20 4 1],
+                color=["blue" "red" "orange"], alpha=[0.9 0.9 0.9], xlabel="Stock "*L"(s)", xlabelfontsize=16,
+                ylabel="Normalized cost " * latexstring("V_{$t}(s)"), ylabelfontsize=16,
+                legendtitle=latexstring("t = {$t}"), legendtitlefontsize=16,
+                linewidth=3, thickness_scaling = 1, framestyle = :origin
+                #title="Normalized cost at time t = $t", titlefontsize=18
+            )
         )
         
         #savefig("value_functions_T-$(T-t).png")
@@ -443,20 +444,20 @@ function dependance_noise!(
 end
 
 function main2()
-    maxStock = 100
-    maxControl = 80
+    maxStock = 50
+    maxControl = 45
     minControl = 0
     stepControl = 1
-    maxNoise = 180
+    maxNoise = 90
     minNoise = 0
     instantaneousCostConstant = 10
-    finalCostConstant = 5
-    horizon = 10
+    finalCostConstant = 0
+    horizon = 20
     
     args = Arguments(maxStock, maxControl, minControl, stepControl, maxNoise, minNoise,
     instantaneousCostConstant, finalCostConstant, horizon)
     
-    println(oldsimulate(args))
+    println(simulate(args))
 end
 
 function olddependance_noise_test(horizon::Int64)
@@ -499,11 +500,11 @@ end
 function dependance_noise_test(horizon::Int64)
     noisetest1 = (100, 80, 0, 20, 500, 20, 2, 10, horizon)
     noisetest2 = (200, 160, 0, 20, 500, 20, 6, 25, 4)
-    noisetest3 = (50, 45, 0, 20, 500, 20, 10, 5, 4)
+    noisetest3 = (50, 45, 0, 20, 1000, 10, 10, 0, 4)
     noisetest4 = (150, 130, 0, 20, 500, 20, 2, 10, 4)
     noisetest5 = (150, 130, 0, 50, 600, 100, 2, 10, 4)
     noisetest6 = (100, 80, 0, 40, 500, 20, 5, 10, 4)
-    newTest = noisetest1
+    newTest = noisetest3
     
     noiseArgs = Arguments(newTest...)
     
@@ -532,8 +533,67 @@ function dependance_noise_test(horizon::Int64)
     savefig("img/valuedepnoise$(newTest...).png")
 end
 
+function dependancy_horizon(T, Smax, dh_bellman_values, hd_bellman_values)
+    xaxis = 0:T
+    #y1 = view(dh_bellman_values, round(Int, Smax/2), :)
+    y1 = [i==T+1 ? 0 : dh_bellman_values[round(Int, Smax/2), i]/(T-i+1) for i in T+1:-1:1]
+    #y2 = view(hd_bellman_values, round(Int, Smax/2), :)
+    y2 = [i==T+1 ? 0 : hd_bellman_values[round(Int, Smax/2), i]/(T-i+1) for i in T+1:-1:1]
+    yaxis = [y1, y2]
+    return xaxis, yaxis
+end
+
+function dependancy_horizon2(T, Smax, dh_bellman_values, hd_bellman_values)
+    xaxis = 0:T
+    #y1 = view(dh_bellman_values, round(Int, Smax/2), :)
+    y1 = [i==T+1 ? 0 : dh_bellman_values[round(Int, Smax/2), i]/(T-i+1) for i in T+1:-1:1]
+    #y2 = view(hd_bellman_values, round(Int, Smax/2), :)
+    y2 = [i==T+1 ? 0 : hd_bellman_values[round(Int, Smax/2), i]/(T-i+1) for i in T+1:-1:1]
+    yaxis = [100*(y2[i] - y1[i])/y2[i] for i in 1:length(y1)] 
+    return xaxis, yaxis
+end
+
+function dependance_horizon_test()
+    noisetest2 = (200, 160, 0, 20, 500, 20, 6, 25, 4)
+    noisetest3 = (50, 45, 0, 1, 90, 0, 10, 0, 200)
+    noisetest4 = (150, 130, 0, 20, 500, 20, 2, 10, 4)
+    noisetest5 = (150, 130, 0, 50, 600, 100, 2, 10, 4)
+    noisetest6 = (100, 80, 0, 1, 120, 0, 10, 0, 200)
+    newTest = noisetest6
+    
+    noiseArgs = Arguments(newTest...)
+    
+    Smax = noiseArgs.maxStock
+    T = noiseArgs.horizon
+    
+    dh_bellman_values = zeros(Smax+1, T+1)
+    hd_bellman_values = zeros(Smax+1, T+1)
+
+    fillvalues!(noiseArgs, dh_bellman_values)
+    fillvalues_hd!(noiseArgs, hd_bellman_values)
+
+    #xaxis, yaxis = dependancy_horizon(T, Smax, dh_bellman_values, hd_bellman_values)
+    xaxis, yaxis = dependancy_horizon2(T, Smax, dh_bellman_values, hd_bellman_values)
+
+    gr()
+    
+    display( plot(
+    xaxis, yaxis, label=["DH" "HD"], legend = :bottomleft, legendfontsize=10,
+    line=[:auto :auto],
+    color=["blue" "red"], alpha=[0.9 0.9], xlabel="Horizon "*L"T", xlabelfontsize=16,
+    ylabel=L"V_0(s)"*" for "*L"s = \overline{S}/2", ylabelfontsize=16,
+    legendtitle="Cases", legendtitlefontsize=12,
+    linewidth=3, thickness_scaling = 1, framestyle = :origin
+    )
+    )
+    
+    savefig("img/valuedepnoise$(newTest...).png")
+end
+
 #multiple_simulations_twodiff()
-#oldmultiple_simulations()
-#main()
-@time olddependance_noise_test(parse(Int64, ARGS[1]))
+#@time oldmultiple_simulations()
+#main2()
+#@time dependance_noise_test(4)
+@time dependance_horizon_test()
+#@time dependance_noise_test(parse(Int64, ARGS[1]))
 #showPolicies()

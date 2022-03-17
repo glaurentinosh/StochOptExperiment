@@ -23,7 +23,7 @@ function dynamicProgramming!(t::Int64, stock::Int64, args::Arguments, bellmanfun
     minControl = args.minControl
     stepControl = args.stepControl
     noise = args.noise
-    instCost(control, stock) = args.instantaneousCost(control, stock)
+    instCost(control, stock, w) = args.instantaneousCost(control, stock, w)
     dynamics(stock, control, w) = args.dynamics(stock, control, w)
     
     maxexpected = -Inf
@@ -32,7 +32,7 @@ function dynamicProgramming!(t::Int64, stock::Int64, args::Arguments, bellmanfun
     for control in minControl:stepControl:maxControl
         expectedvalue = 0
         for w in noise.noiseRange
-            realization = instCost(control, stock) + bellmanfunction[dynamics(stock, control, w) + 1, t+2]
+            realization = instCost(control, stock, w) + bellmanfunction[dynamics(stock, control, w) + 1, t+2]
             expectedvalue += realization * noise.law(w) 
         end
         if maxexpected < expectedvalue
@@ -49,7 +49,7 @@ function dynamicProgramming!(t::Int64, stock::Int64, args::Arguments, bellmanfun
     minControl = args.minControl
     stepControl = args.stepControl
     noise = args.noise
-    instCost(control, stock) = args.instantaneousCost(control, stock)
+    instCost(control, stock, w) = args.instantaneousCost(control, stock, w)
     dynamics(stock, control, w) = args.dynamics(stock, control, w)
     
     expectedmax = 0
@@ -58,7 +58,7 @@ function dynamicProgramming!(t::Int64, stock::Int64, args::Arguments, bellmanfun
     for w in noise.noiseRange
         maxvalue = -Inf
         for control in minControl:stepControl:maxControl
-            realization = instCost(control, stock) + bellmanfunction[dynamics(stock, control, w) + 1, t+2]
+            realization = instCost(control, stock, w) + bellmanfunction[dynamics(stock, control, w) + 1, t+2]
             if maxvalue < realization
                 maxvalue = realization
                 policy = control
