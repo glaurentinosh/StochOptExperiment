@@ -5,6 +5,7 @@ abstract type ProbabilityDistribution end
 abstract type LinearDistribution <: ProbabilityDistribution end
 abstract type UniformDistribution <: ProbabilityDistribution end
 abstract type QuadraticDistribution <: ProbabilityDistribution end
+abstract type Quadratic2Distribution <: ProbabilityDistribution end
 abstract type NormalDistribution <: ProbabilityDistribution end
 
 abstract type RandomVariable{T<:ProbabilityDistribution} end
@@ -36,6 +37,12 @@ function Noise{QuadraticDistribution}(minNoise::Int64, maxNoise::Int64, multipli
     Noise{QuadraticDistribution}(noiseRange, law)
 end
 
+function Noise{Quadratic2Distribution}(minNoise::Int64, maxNoise::Int64, multiplier = 1)
+    noiseRange = minNoise:maxNoise
+    law(w::Int64) = quadratic2Law(w, minNoise, maxNoise)
+    Noise{Quadratic2Distribution}(noiseRange, law)
+end
+
 function Noise{NormalDistribution}(minNoise::Int64, maxNoise::Int64, multiplier = 1)
     noiseRange = minNoise:maxNoise
     law(w::Int64) = normalLaw(w, minNoise, maxNoise, multiplier)
@@ -55,6 +62,11 @@ end
 function quadraticLaw(w::Int64, minNoise::Int64, maxNoise::Int64)
     return 6*(w - minNoise)*(maxNoise - w)/(maxNoise - minNoise)^3
 end
+
+function quadratic2Law(w::Int64, minNoise::Int64, maxNoise::Int64)
+    return 12(w - (minNoise + maxNoise)/2)^2/(maxNoise - minNoise)^3
+end
+
 
 function normalLaw(w::Int64, minNoise::Int64, maxNoise::Int64, multiplier::Real)
     mean = (maxNoise - minNoise)/2

@@ -22,7 +22,7 @@ function plotting(
         x_axis = 0:Smax
         y_axis = [
         normalize(view(dh_bellman, :, t+1), (T-t)),
-        normalize(view(hd_bellman,:, t+1), (T-t)),
+        normalize(view(hd_bellman, :, t+1), (T-t)),
         ]
         
         display( plot(

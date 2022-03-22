@@ -14,8 +14,16 @@ function finalCost_aux(s, Pf)
     return Pf*s
 end
 
+function finalCost_quad(s, Pf, smax)
+    return Pf*s*(smax - s)
+end
+
 function dynamics_aux(s, u, w, Smax)
     return round(Int, max(min(s - u + w, Smax), 0))
+end
+
+function dynamics_noupperbound(s, u, w, Smax)
+    return round(Int, max(s - u + w, 0))
 end
 
 function dependance_noise!(args::Arguments, dhbellman::BellmanFunctions{DH},
@@ -171,22 +179,22 @@ end
 
 function mainplots()
     maxStock = 50
-    maxControl = 45
+    maxControl = 40
     minControl = 0
     stepControl = 1
-    horizon = 8
+    horizon = 5
 
     minNoise = 0
-    maxNoise = 70
+    maxNoise = 40
     multiplier = 0.25
-    noise = Noise{NormalDistribution}(minNoise, maxNoise, multiplier)
+    noise = Noise{Quadratic2Distribution}(minNoise, maxNoise, multiplier)
 
-    p = 10
-    P = 0
+    p = 0
+    P = 5
 
     dynamics(s, u, w) = dynamics_aux(s, u, w, maxStock)
-    instCost(u, s, w) = instantaneousCost(u, s, w, p)
-    finalCost(s) = finalCost_aux(s, P)
+    instCost(u, s, w) = instantaneousCost(u, s, 0, p)
+    finalCost(s) = finalCost_quad(s, P, maxStock)#finalCost_aux(s, P)
 
     args = Arguments(maxStock, maxControl, minControl, stepControl, noise, dynamics, instCost, finalCost, horizon)
 
@@ -199,8 +207,8 @@ function mainplots()
 end
 
 function main()
-    mainplots()
-    #multipletests()    
+    #mainplots()
+    multipletests()    
 end
 
 function benchmark()
@@ -220,4 +228,5 @@ function benchmark()
     close(f)
  end
 
- benchmark()
+ #benchmark()
+ main()

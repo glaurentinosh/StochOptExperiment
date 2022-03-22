@@ -59,6 +59,16 @@ function instantaneousCost(u, s, w, args::Arguments)
     end
 end
 
+function instantaneousCost3(u, s, w, args::Arguments)
+    Smax = args.maxStock
+    p = args.instantaneousCostConstant
+    if (u <= s)
+        return p*u
+    else
+        return p*s - 10*p*(u-s)
+    end
+end
+
 function finalCost(s, args::Arguments)
     Pf = args.finalCostConstant
     return Pf*s
@@ -81,7 +91,7 @@ function fillvalues!(args::Arguments, bellman_function::Array{U, 2}) where U <: 
     
     T = args.horizon
     K(s) = finalCost(s, args)
-    L(u,s,w) = instantaneousCost2(u, s, w, args)
+    L(u,s,w) = instantaneousCost3(u, s, w, args)
     dynamics(s, u, w) = dynamics_aux(s, u, w, args)
     
     policies = zeros(T)
@@ -123,7 +133,7 @@ function fillvalues_hd!(args::Arguments, hd_bellman_function::Array{U, 2}) where
     
     T = args.horizon
     K(s) = finalCost(s, args)
-    L(u,s,w) = instantaneousCost2(u, s, w, args)
+    L(u,s,w) = instantaneousCost3(u, s, w, args)
     
     dynamics(s, u, w) = dynamics_aux(s, u, w, args)
     
@@ -250,6 +260,19 @@ function oldsimulate2(args::Arguments)
     return (hd_bellman_values[round(Int, Smax/2),1] - dh_bellman_values[round(Int, Smax/2),1])/hd_bellman_values[round(Int, Smax/2),1]
 end
 
+function oldsimulatezeroinitialstock(args::Arguments)
+    Smax = args.maxStock
+    T = args.horizon
+    
+    dh_bellman_values = zeros(Smax+1, T+1)
+    hd_bellman_values = zeros(Smax+1, T+1)
+    
+    fillvalues!(args, dh_bellman_values)
+    fillvalues_hd_2!(args, hd_bellman_values)
+    
+    return (hd_bellman_values[1,1] - dh_bellman_values[1,1])/hd_bellman_values[1,1]
+end
+
 function oldmultiple_simulations(wmaxmultiplier = 2)
     diff = 0
     smax, umax, wmax, pmax, Pmax = 0,0,0,0,0
@@ -267,7 +290,37 @@ function oldmultiple_simulations(wmaxmultiplier = 2)
         #w = wmaxmultiplier*s
         println("s, u, w, p, P : $(s), $(u), $(w), $(p), $(P)")
         args = Arguments(s,u,umin,ustep,w, wmin, p, P, horizon)
-        x = @time oldsimulate2(args)
+        x = @time oldsimulate(args)
+        if (diff < x)
+            diff = x
+            smax, umax, wmax, pmax, Pmax = s, u, w, p, P
+            printstyled("Found diff $(x) for s, u, w, p, P = $(s), $(u), $(w), $p, $P\n"; color = :green )
+        else
+            printstyled("Found diff $(x) for s, u, w, p, P = $(s), $(u), $(w), $p, $P "; color = :red )
+            printstyled("still $(diff) for s, u, w, p, P = $(smax), $(umax), $(wmax), $pmax, $Pmax\n"; color = :green )
+        end
+    end
+end
+
+function bigstockmultiple_simulations(wmaxmultiplier = 2)
+    diff = 0
+    smax, umax, wmax, pmax, Pmax = 0,0,0,0,0
+    umin = 0
+    x = 0
+    wmin = 0
+    ustep = 20
+    sstart = 50
+    horizon = 52
+    
+    p = 10
+    P = 0
+    s = 1000
+    
+    for u in 20:ustep:100, w in 20:ustep:100#, p in 2:4:10#, P in 5:5:25
+        #w = wmaxmultiplier*s
+        println("s, u, w, p, P : $(s), $(u), $(w), $(p), $(P)")
+        args = Arguments(s,u,umin,ustep,w, wmin, p, P, horizon)
+        x = @time oldsimulatezeroinitialstock(args)
         if (diff < x)
             diff = x
             smax, umax, wmax, pmax, Pmax = s, u, w, p, P
@@ -559,7 +612,7 @@ function dependance_horizon_test()
     noisetest4 = (150, 130, 0, 20, 500, 20, 2, 10, 4)
     noisetest5 = (150, 130, 0, 50, 600, 100, 2, 10, 4)
     noisetest6 = (100, 80, 0, 1, 120, 0, 10, 0, 200)
-    newTest = noisetest6
+    newTest = noisetest3
     
     noiseArgs = Arguments(newTest...)
     
@@ -591,9 +644,10 @@ function dependance_horizon_test()
 end
 
 #multiple_simulations_twodiff()
-#@time oldmultiple_simulations()
-#main2()
+#@time bigstockmultiple_simulations()
+main2()
 #@time dependance_noise_test(4)
-@time dependance_horizon_test()
+#@time dependance_horizon_test()
 #@time dependance_noise_test(parse(Int64, ARGS[1]))
 #showPolicies()
+#@time oldmultiple_simulations()
