@@ -263,8 +263,8 @@ function maindepnoise()
     vars = Variables(thismaxStock, thismaxControl, thisminControl, thismaxNoise,
                         thishorizon, thislaw, thisinstCost, thisfinalCost, thisdyn)
 
-    dhvaluefunction = zeros(maxStock + 1, horizon + 1)
-    hdvaluefunction = zeros(maxStock + 1, horizon + 1)
+    dhvaluefunction = zeros(thismaxStock + 1, thishorizon + 1)
+    hdvaluefunction = zeros(thismaxStock + 1, thishorizon + 1)
     
     noiseArgs = NoiseArgs(vars,0,thismaxNoise,20)
     
@@ -277,7 +277,7 @@ function maindepnoise()
     display( plot(
     xaxis, yaxis, label=["DH" "HD"], legend = :bottomleft, legendfontsize=10,
     line=[:auto :auto],
-    color=["blue" "red"], alpha=[0.9 0.9], xlabel="Max Noise "*L"\overline{W}"*" for "*L"T="*"$horizon", xlabelfontsize=16,
+    color=["blue" "red"], alpha=[0.9 0.9], xlabel="Max Noise "*L"\overline{W}"*" for "*L"T="*"$thishorizon", xlabelfontsize=16,
     ylabel=L"V_0(s)"*" for "*L"s = \overline{S}/2", ylabelfontsize=16,
     legendtitle="Cases", legendtitlefontsize=12,
     linewidth=3, thickness_scaling = 1, framestyle = :origin
@@ -286,21 +286,9 @@ function maindepnoise()
     savefig("img/valuedepnoise$(filename(noiseArgs)).png")
 end
 
-function maindephorizon()
-    thismaxStock = 50
-    thismaxControl = 40
-    thisminControl = 0
-    thismaxNoise = 4*thismaxStock
-    thishorizon = 50
-    law = uniflaw(thismaxNoise, thishorizon)
-    thislaw = normalizelaw(law)
-    thisinstCost = instCost
-    thisfinalCost = finalCost
-    dynamics(s, u, w) = round(Int, max(min(s - u + w, thismaxStock), 0))
-    thisdyn = dynamics
-
-    vars = Variables(thismaxStock, thismaxControl, thisminControl, thismaxNoise,
-                        thishorizon, thislaw, thisinstCost, thisfinalCost, thisdyn)
+function maindephorizon(vars::Variables)
+    thismaxStock = vars.maxStock
+    thishorizon = vars.horizon
 
     dhvaluefunction = zeros(thismaxStock + 1, thishorizon + 1)
     hdvaluefunction = zeros(thismaxStock + 1, thishorizon + 1)
@@ -358,9 +346,9 @@ function main()
     vars = Variables(thismaxStock, thismaxControl, thisminControl, thismaxNoise,
     thishorizon, thislaw, thisinstCost, thisfinalCost, thisdyn)
 
-    #maindepnoise()
+    maindepnoise()
     mainplot(vars)
-    #maindephorizon()
+    maindephorizon(vars)
     #plotlaw(sinelaw(40, 4))
 
 end
