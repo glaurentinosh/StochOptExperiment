@@ -46,7 +46,7 @@ function filename(noiseargs::NoiseArgs)
 end
 
 function instCoststandard(control, stock, noise)
-    if control <= stock
+    if control <= stock + noise
         return instCostConst*(control)
     else
         return -Inf
@@ -57,7 +57,7 @@ function instCostnormalcenter(u, s, w)
     u <= s+w ? instCostConst*pdf(Normal(MAXCONTROL/2, MAXCONTROL/8), u) : -Inf
 end
 
-instCost(control, stock, noise) = instCostnormalcenter(control, stock, noise)
+instCost(control, stock, noise) = instCoststandard(control, stock, noise)
 
 finalcostsine(s) = sin(pi*s/100)
 finalCostlinear(s) = finalCostConst*s
@@ -65,7 +65,7 @@ finalcostnormal(s) = pdf(Normal(MAXSTOCK, MAXSTOCK/8), s)
 finalcostnegative(s) = finalCostConst*(MAXSTOCK - s)
 finalcostcossine(s) = finalCostConst*(1+0.5cos(2pi*s/MAXSTOCK))
 finalcostnormalcenter(s) = pdf(Normal(MAXSTOCK/2, MAXSTOCK/8), s)
-finalCost(s) = finalcostnormalcenter(s)
+finalCost(s) = finalCostlinear(s)
 
 function fillvaluesdh!(vars::Variables, dhvaluefunction)
     maxStock = vars.maxStock
@@ -327,12 +327,82 @@ function mainplot(vars::Variables)
     plotting(thishorizon, thismaxStock, dhvaluefunction, hdvaluefunction)
 end
 
+function mainplotvaluedyn(vars::Variables)
+    thismaxStock = vars.maxStock
+    thishorizon = vars.horizon
+
+    dhvaluefunction = zeros(thismaxStock + 1, thishorizon + 1)
+    hdvaluefunction = zeros(thismaxStock + 1, thishorizon + 1)
+    
+    fillvaluesdh!(vars, dhvaluefunction)
+    fillvalueshd!(vars, hdvaluefunction)
+
+    for t in thishorizon:-1:0
+        dhvaluefunctiondyn = [dhvaluefunction[vars.dynamics(thismaxStock/2, u, vars.maxNoise/2), t+1] for u in 0:vars.maxControl]
+        hdvaluefunctiondyn = [hdvaluefunction[vars.dynamics(thismaxStock/2, u, vars.maxNoise/2), t+1] for u in 0:vars.maxControl]
+
+        x_axis = 0:vars.maxControl
+        y_axis = [
+        normalize(dhvaluefunctiondyn, (thishorizon-t)),
+        normalize(hdvaluefunctiondyn, (thishorizon-t)),
+        ]
+        
+        display( plot(
+        x_axis, y_axis, label=["DH" "HD"], legend = :bottomright, legendfontsize=14,
+        line=[:auto :auto], linewidht=[20 4],
+        color=["blue" "red"], alpha=[0.9 0.9], xlabel="Control "*L"(u)", xlabelfontsize=16,
+        ylabel="Composed cost " * latexstring("V_{$t}(s)"), ylabelfontsize=16,
+        legendtitle=latexstring("t = {$t}"), legendtitlefontsize=16,
+        linewidth=3, thickness_scaling = 1, framestyle = :origin
+        #title="Normalized cost at time t = $t", titlefontsize=18
+        )
+        )
+        
+        #savefig("value_functions_T-$(T-t).png")
+    end
+end
+
+function mainplotvaluedyninstcost(vars::Variables)
+    thismaxStock = vars.maxStock
+    thishorizon = vars.horizon
+
+    dhvaluefunction = zeros(thismaxStock + 1, thishorizon + 1)
+    hdvaluefunction = zeros(thismaxStock + 1, thishorizon + 1)
+    
+    fillvaluesdh!(vars, dhvaluefunction)
+    fillvalueshd!(vars, hdvaluefunction)
+
+    for t in thishorizon:-1:0
+        dhvaluefunctiondyn = [vars.instCost(u,thismaxStock/2,vars.maxNoise/2) + dhvaluefunction[vars.dynamics(thismaxStock/2, u, vars.maxNoise/2), t+1] for u in 0:vars.maxControl]
+        hdvaluefunctiondyn = [vars.instCost(u,thismaxStock/2,vars.maxNoise/2) + hdvaluefunction[vars.dynamics(thismaxStock/2, u, vars.maxNoise/2), t+1] for u in 0:vars.maxControl]
+
+        x_axis = 0:vars.maxControl
+        y_axis = [
+        normalize(dhvaluefunctiondyn, (thishorizon-t)),
+        normalize(hdvaluefunctiondyn, (thishorizon-t)),
+        ]
+        
+        display( plot(
+        x_axis, y_axis, label=["DH" "HD"], legend = :bottomright, legendfontsize=14,
+        line=[:auto :auto], linewidht=[20 4],
+        color=["blue" "red"], alpha=[0.9 0.9], xlabel="Control "*L"(u)", xlabelfontsize=16,
+        ylabel="Q learning " * latexstring("Q_{$t}(s)"), ylabelfontsize=16,
+        legendtitle=latexstring("t = {$t}"), legendtitlefontsize=16,
+        linewidth=3, thickness_scaling = 1, framestyle = :origin
+        #title="Normalized cost at time t = $t", titlefontsize=18
+        )
+        )
+        
+        #savefig("value_functions_T-$(T-t).png")
+    end
+end
+
 function main()
     thismaxStock = 50
     thismaxControl = 40
     thisminControl = 0
     thismaxNoise = 40
-    thishorizon = 50
+    thishorizon = 8
     
     law = uniflaw(thismaxNoise,thishorizon)
     thislaw = normalizelaw(law)
@@ -346,9 +416,11 @@ function main()
     vars = Variables(thismaxStock, thismaxControl, thisminControl, thismaxNoise,
     thishorizon, thislaw, thisinstCost, thisfinalCost, thisdyn)
 
-    maindepnoise()
-    mainplot(vars)
-    maindephorizon(vars)
+    #mainplotvaluedyn(vars)
+    mainplotvaluedyninstcost(vars)
+    #maindepnoise()
+    #mainplot(vars)
+    #maindephorizon(vars)
     #plotlaw(sinelaw(40, 4))
 
 end
