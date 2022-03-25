@@ -45,8 +45,8 @@ function filename(noiseargs::NoiseArgs)
     "$(noiseargs.minNoise), $(noiseargs.maxNoise), $(noiseargs.stepNoise);$(varname)"
 end
 
-function instCoststandard(control, stock, noise)
-    if control <= stock + noise
+function instCoststandard(control, stock, noise, maxstock)
+    if control <= min(maxstock, stock + noise)
         return instCostConst*(control)
     else
         return -Inf
@@ -57,10 +57,9 @@ function instCostnormalcenter(u, s, w)
     u <= s+w ? instCostConst*pdf(Normal(MAXCONTROL/2, MAXCONTROL/8), u) : -Inf
 end
 
-instCost(control, stock, noise) = instCoststandard(control, stock, noise)
-
 finalcostsine(s) = sin(pi*s/100)
 finalCostlinear(s) = finalCostConst*s
+finalCostnull(s) = 0
 finalcostnormal(s) = pdf(Normal(MAXSTOCK, MAXSTOCK/8), s)
 finalcostnegative(s) = finalCostConst*(MAXSTOCK - s)
 finalcostcossine(s) = finalCostConst*(1+0.5cos(2pi*s/MAXSTOCK))
@@ -147,6 +146,13 @@ timedependentlaw(maxNoise, horizon) = [(1.5+cos(4pi*j/horizon))*(i-maxNoise/2)^2
 randomlaw(maxNoise, horizon) = rand(maxNoise+1, horizon+1)
 cossinelaw(maxNoise, horizon) = [1+cos(2pi*i/maxNoise) for i in 0:maxNoise, j in 0:horizon]
 sinelaw(maxNoise, horizon) = [1+sin(2pi*i/maxNoise) for i in 0:maxNoise, j in 0:horizon]
+explaw(maxNoise, horizon) = [ℯ^(-i/maxNoise) for i in 0:maxNoise, j in 0:horizon]
+hyperboliclaw(maxNoise, horizon) = [1/(1+i) for i in 0:maxNoise, j in 0:horizon]
+
+function random2law(maxNoise, horizon)
+    randvec = rand(maxNoise+1)
+    return [randvec[i] for i in 1:maxNoise+1, j in 0:horizon]
+end
 
 normalizelaw(law) = law./sum(law, dims=1)
 
@@ -397,18 +403,58 @@ function mainplotvaluedyninstcost(vars::Variables)
     end
 end
 
+function mainplotexpecteddh(vars::Variables)
+    thismaxStock = vars.maxStock
+    thishorizon = vars.horizon
+
+    dhvaluefunction = zeros(thismaxStock + 1, thishorizon + 1)
+
+    fillvaluesdh!(vars, dhvaluefunction)
+
+    for t in thishorizon-1:-1:0
+        x_axis = 0:vars.maxControl
+        y_axis = zeros(vars.maxControl+1)
+
+        for control in vars.minControl:vars.maxControl
+            expectedvalue = 0
+            divideby = 0
+            for w in 0:vars.maxNoise
+                realization = vars.instCost(control, vars.maxStock/2, w) + dhvaluefunction[vars.dynamics(vars.maxStock/2, control, w) + 1, t+2]
+                expectedvalue += realization * vars.law[w+1,t+1]
+                divideby += vars.law[w+1,t+1]
+            end
+            expectedvalue /= divideby
+            y_axis[control+1] = expectedvalue
+        end
+        
+        display( plot(
+        x_axis, y_axis, label=["DH" "HD"], legend = :bottomright, legendfontsize=14,
+        line=[:auto :auto], linewidht=[20 4],
+        color=["blue" "red"], alpha=[0.9 0.9], xlabel="Control "*L"(u)", xlabelfontsize=16,
+        ylabel="E[Q learning] " * latexstring("Q_{$t}(s)"), ylabelfontsize=16,
+        legendtitle=latexstring("t = {$t}"), legendtitlefontsize=16,
+        linewidth=3, thickness_scaling = 1, framestyle = :origin
+        #title="Normalized cost at time t = $t", titlefontsize=18
+        )
+        )
+        
+        #savefig("value_functions_T-$(T-t).png")
+    end
+end
+
 function main()
     thismaxStock = 50
-    thismaxControl = 40
+    thismaxControl = 45
     thisminControl = 0
-    thismaxNoise = 40
-    thishorizon = 8
+    thismaxNoise = 1000
+    thishorizon = 1
     
     law = uniflaw(thismaxNoise,thishorizon)
     thislaw = normalizelaw(law)
     
+    instCost(control, stock, noise) = instCoststandard(control, stock, noise, thismaxStock)
     thisinstCost = instCost
-    thisfinalCost = finalCost
+    thisfinalCost = finalCostnull
 
     dynamics(s, u, w) = round(Int, max(min(s - u + w, thismaxStock), 0))
     thisdyn = dynamics
@@ -417,11 +463,13 @@ function main()
     thishorizon, thislaw, thisinstCost, thisfinalCost, thisdyn)
 
     #mainplotvaluedyn(vars)
-    mainplotvaluedyninstcost(vars)
+    #mainplotvaluedyninstcost(vars)
+    #mainplotexpecteddh(vars)
+    #mainplotmaxhd(vars)
     #maindepnoise()
-    #mainplot(vars)
+    mainplot(vars)
     #maindephorizon(vars)
-    #plotlaw(sinelaw(40, 4))
+    #plotlaw(thislaw)
 
 end
 

@@ -20,18 +20,6 @@ struct Noise
     law::Function
 end
 
-struct Variables
-    maxStock::Int64
-    maxControl::Int64
-    minControl::Int64
-    stepControl::Int64
-    noise::Noise
-    instantaneousCost::Function
-    finalCost::Function
-    horizon::Int64
-end
-
-
 function Arguments(args::Arguments, newMaxNoise::Int64)
     newArgs = Arguments(args.maxStock, args.maxControl, 0, 1, newMaxNoise, 0,
     args.instantaneousCostConstant, args.finalCostConstant, args.horizon,
@@ -54,6 +42,16 @@ function instantaneousCost(u, s, w, args::Arguments)
     p = args.instantaneousCostConstant
     if (u <= s)
         return p*u
+    else
+        return -Inf
+    end
+end
+
+function instantaneousCost4(u, s, w, args::Arguments)
+    Smax = args.maxStock
+    p = args.instantaneousCostConstant
+    if (u <= s + w)
+        return p*(u)
     else
         return -Inf
     end
@@ -91,7 +89,7 @@ function fillvalues!(args::Arguments, bellman_function::Array{U, 2}) where U <: 
     
     T = args.horizon
     K(s) = finalCost(s, args)
-    L(u,s,w) = instantaneousCost3(u, s, w, args)
+    L(u,s,w) = instantaneousCost4(u, s, w, args)
     dynamics(s, u, w) = dynamics_aux(s, u, w, args)
     
     policies = zeros(T)
@@ -133,7 +131,7 @@ function fillvalues_hd!(args::Arguments, hd_bellman_function::Array{U, 2}) where
     
     T = args.horizon
     K(s) = finalCost(s, args)
-    L(u,s,w) = instantaneousCost3(u, s, w, args)
+    L(u,s,w) = instantaneousCost4(u, s, w, args)
     
     dynamics(s, u, w) = dynamics_aux(s, u, w, args)
     
@@ -286,7 +284,7 @@ function oldmultiple_simulations(wmaxmultiplier = 2)
     #p = 10
     P = 0
     
-    for s in sstart:50:300, u in 0.5*s:ustep:0.9*s, w in 0.2*s:ustep:4*s, p in 2:4:10#, P in 5:5:25
+    for s in sstart:50:300, u in 0.5*s:ustep:s, w in 0.2*s:ustep:4*s, p in 2:4:10#, P in 5:5:25
         #w = wmaxmultiplier*s
         println("s, u, w, p, P : $(s), $(u), $(w), $(p), $(P)")
         args = Arguments(s,u,umin,ustep,w, wmin, p, P, horizon)
@@ -645,9 +643,9 @@ end
 
 #multiple_simulations_twodiff()
 #@time bigstockmultiple_simulations()
-main2()
+#main2()
 #@time dependance_noise_test(4)
 #@time dependance_horizon_test()
 #@time dependance_noise_test(parse(Int64, ARGS[1]))
 #showPolicies()
-#@time oldmultiple_simulations()
+@time oldmultiple_simulations()
